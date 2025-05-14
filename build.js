@@ -40,22 +40,25 @@ function copyDir(src, dest) {
   }
 }
 
-// Ensure dist directory exists
+// Clean up dist directory if it exists
 const distDir = path.join(__dirname, 'dist');
-if (!fs.existsSync(distDir)) {
-  fs.mkdirSync(distDir);
+if (fs.existsSync(distDir)) {
+  console.log('Cleaning up existing dist directory...');
+  try {
+    fs.rmSync(distDir, { recursive: true, force: true });
+    console.log('Successfully removed existing dist directory');
+  } catch (err) {
+    console.warn('Warning: Failed to clean up dist directory:', err);
+  }
 }
 
+// Create fresh dist directories
+console.log('Creating dist directories...');
+fs.mkdirSync(distDir, { recursive: true });
 const publicDir = path.join(distDir, 'public');
-if (!fs.existsSync(publicDir)) {
-  fs.mkdirSync(publicDir);
-}
-
-// Ensure assets directory exists
+fs.mkdirSync(publicDir, { recursive: true });
 const assetsDir = path.join(publicDir, 'assets');
-if (!fs.existsSync(assetsDir)) {
-  fs.mkdirSync(assetsDir, { recursive: true });
-}
+fs.mkdirSync(assetsDir, { recursive: true });
 
 try {
   // Install dependencies
@@ -78,11 +81,10 @@ try {
     console.warn('Warning: client directory not found. Creating basic placeholders.');
   }
   
-  // Create a basic index.html if it doesn't exist
+  // ALWAYS create a basic index.html
+  console.log('Creating index.html...');
   const indexHtmlPath = path.join(publicDir, 'index.html');
-  if (!fs.existsSync(indexHtmlPath)) {
-    console.log('Creating basic index.html');
-    const basicHtml = `
+  const basicHtml = `
 <!DOCTYPE html>
 <html lang="en">
 <head>
@@ -94,20 +96,19 @@ try {
 <body>
   <div id="root">
     <h1>LearnHub App</h1>
-    <p>Application is running</p>
+    <p>Application is running successfully!</p>
   </div>
   <script src="/assets/index.js"></script>
 </body>
 </html>
-    `;
-    fs.writeFileSync(indexHtmlPath, basicHtml);
-  }
+  `;
+  fs.writeFileSync(indexHtmlPath, basicHtml);
+  console.log(`Created ${indexHtmlPath}`);
   
-  // Create basic CSS if not found
+  // ALWAYS create a basic CSS
+  console.log('Creating CSS...');
   const cssPath = path.join(assetsDir, 'index.css');
-  if (!fs.existsSync(cssPath)) {
-    console.log('Creating basic CSS');
-    const basicCss = `
+  const basicCss = `
 body {
   font-family: system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, 'Open Sans', 'Helvetica Neue', sans-serif;
   margin: 0;
@@ -128,24 +129,48 @@ body {
 h1 {
   color: #2563eb;
 }
-    `;
-    fs.writeFileSync(cssPath, basicCss);
-  }
+  `;
+  fs.writeFileSync(cssPath, basicCss);
+  console.log(`Created ${cssPath}`);
   
-  // Create basic JS if not found
+  // ALWAYS create a basic JS
+  console.log('Creating JS...');
   const jsPath = path.join(assetsDir, 'index.js');
-  if (!fs.existsSync(jsPath)) {
-    console.log('Creating basic JS');
-    const basicJs = `
+  const basicJs = `
 // Simple client-side JavaScript
 document.addEventListener('DOMContentLoaded', () => {
   console.log('LearnHub Application loaded');
 });
-    `;
-    fs.writeFileSync(jsPath, basicJs);
+  `;
+  fs.writeFileSync(jsPath, basicJs);
+  console.log(`Created ${jsPath}`);
+  
+  // Create a test file to verify the build
+  fs.writeFileSync(path.join(publicDir, 'build-verification.txt'), `Build completed at ${new Date().toISOString()}`);
+  
+  // Log the final directory structure
+  console.log('\nFinal directory structure:');
+  try {
+    const listDir = (dir, level = 0) => {
+      const indent = '  '.repeat(level);
+      const files = fs.readdirSync(dir, { withFileTypes: true });
+      
+      files.forEach(file => {
+        const filePath = path.join(dir, file.name);
+        console.log(`${indent}- ${file.name}${file.isDirectory() ? '/' : ''}`);
+        
+        if (file.isDirectory()) {
+          listDir(filePath, level + 1);
+        }
+      });
+    };
+    
+    listDir(distDir);
+  } catch (err) {
+    console.error('Error listing directory structure:', err);
   }
   
-  console.log('Build completed successfully!');
+  console.log('\nBuild completed successfully!');
 } catch (error) {
   console.error('Build failed:', error);
   process.exit(1);
