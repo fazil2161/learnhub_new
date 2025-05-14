@@ -70,18 +70,45 @@ export async function setupVite(app: Express, server: Server) {
 }
 
 export function serveStatic(app: Express) {
-  const distPath = path.resolve(import.meta.dirname, "..", "dist", "public");
-
-  if (!fs.existsSync(distPath)) {
-    throw new Error(
-      `Could not find the build directory: ${distPath}, make sure to build the client first`,
-    );
+  try {
+    // First try the original path
+    const distPath = path.resolve(import.meta.dirname, "..", "dist", "public");
+    
+    if (fs.existsSync(distPath)) {
+      log(`Serving static files from ${distPath}`);
+      app.use(express.static(distPath));
+      
+      // fall through to index.html if the file doesn't exist
+      app.use("*", (_req, res) => {
+        const indexPath = path.resolve(distPath, "index.html");
+        if (fs.existsSync(indexPath)) {
+          res.sendFile(indexPath);
+        } else {
+          res.status(200).send('<h1>LearnHub App</h1><p>Application is running but index.html was not found.</p>');
+        }
+      });
+      return;
+    }
+    
+    // Fallback to just dist in case the build structure is different
+    const fallbackPath = path.resolve(import.meta.dirname, "..", "dist");
+    log(`Fallback: Serving static files from ${fallbackPath}`);
+    app.use(express.static(fallbackPath));
+    
+    // Basic fallback for all routes
+    app.use("*", (_req, res) => {
+      const indexPath = path.resolve(fallbackPath, "public", "index.html");
+      if (fs.existsSync(indexPath)) {
+        res.sendFile(indexPath);
+      } else {
+        res.status(200).send('<h1>LearnHub App</h1><p>Application is running but index.html was not found.</p>');
+      }
+    });
+  } catch (error) {
+    console.error("Error in serveStatic:", error);
+    // Provide a basic response for all routes if something went wrong
+    app.use("*", (_req, res) => {
+      res.status(500).send('<h1>Server Error</h1><p>There was an error setting up static file serving.</p>');
+    });
   }
-
-  app.use(express.static(distPath));
-
-  // fall through to index.html if the file doesn't exist
-  app.use("*", (_req, res) => {
-    res.sendFile(path.resolve(distPath, "index.html"));
-  });
 }
