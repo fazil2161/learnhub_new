@@ -16,6 +16,12 @@ function copyDir(src, dest) {
     fs.mkdirSync(dest, { recursive: true });
   }
   
+  // Check if source directory exists
+  if (!fs.existsSync(src)) {
+    console.warn(`Warning: Source directory ${src} does not exist. Skipping.`);
+    return;
+  }
+  
   // Read source directory
   const entries = fs.readdirSync(src, { withFileTypes: true });
   
@@ -35,12 +41,20 @@ function copyDir(src, dest) {
 }
 
 // Ensure dist directory exists
-if (!fs.existsSync(path.join(__dirname, 'dist'))) {
-  fs.mkdirSync(path.join(__dirname, 'dist'));
+const distDir = path.join(__dirname, 'dist');
+if (!fs.existsSync(distDir)) {
+  fs.mkdirSync(distDir);
 }
 
-if (!fs.existsSync(path.join(__dirname, 'dist', 'public'))) {
-  fs.mkdirSync(path.join(__dirname, 'dist', 'public'));
+const publicDir = path.join(distDir, 'public');
+if (!fs.existsSync(publicDir)) {
+  fs.mkdirSync(publicDir);
+}
+
+// Ensure assets directory exists
+const assetsDir = path.join(publicDir, 'assets');
+if (!fs.existsSync(assetsDir)) {
+  fs.mkdirSync(assetsDir, { recursive: true });
 }
 
 try {
@@ -56,17 +70,19 @@ try {
   console.log('Copying client files...');
   
   const clientDir = path.join(__dirname, 'client');
-  const publicDir = path.join(__dirname, 'dist', 'public');
   
+  // Copy client directory contents if it exists
   if (fs.existsSync(clientDir)) {
-    // Copy client directory contents
     copyDir(clientDir, publicDir);
-    
-    // Create a basic index.html if it doesn't exist
-    const indexHtmlPath = path.join(publicDir, 'index.html');
-    if (!fs.existsSync(indexHtmlPath)) {
-      console.log('Creating basic index.html');
-      const basicHtml = `
+  } else {
+    console.warn('Warning: client directory not found. Creating basic placeholders.');
+  }
+  
+  // Create a basic index.html if it doesn't exist
+  const indexHtmlPath = path.join(publicDir, 'index.html');
+  if (!fs.existsSync(indexHtmlPath)) {
+    console.log('Creating basic index.html');
+    const basicHtml = `
 <!DOCTYPE html>
 <html lang="en">
 <head>
@@ -83,21 +99,15 @@ try {
   <script src="/assets/index.js"></script>
 </body>
 </html>
-      `;
-      fs.writeFileSync(indexHtmlPath, basicHtml);
-    }
-    
-    // Ensure assets directory exists
-    const assetsDir = path.join(publicDir, 'assets');
-    if (!fs.existsSync(assetsDir)) {
-      fs.mkdirSync(assetsDir, { recursive: true });
-    }
-    
-    // Create basic CSS if not found
-    const cssPath = path.join(assetsDir, 'index.css');
-    if (!fs.existsSync(cssPath)) {
-      console.log('Creating basic CSS');
-      const basicCss = `
+    `;
+    fs.writeFileSync(indexHtmlPath, basicHtml);
+  }
+  
+  // Create basic CSS if not found
+  const cssPath = path.join(assetsDir, 'index.css');
+  if (!fs.existsSync(cssPath)) {
+    console.log('Creating basic CSS');
+    const basicCss = `
 body {
   font-family: system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, 'Open Sans', 'Helvetica Neue', sans-serif;
   margin: 0;
@@ -118,22 +128,21 @@ body {
 h1 {
   color: #2563eb;
 }
-      `;
-      fs.writeFileSync(cssPath, basicCss);
-    }
-    
-    // Create basic JS if not found
-    const jsPath = path.join(assetsDir, 'index.js');
-    if (!fs.existsSync(jsPath)) {
-      console.log('Creating basic JS');
-      const basicJs = `
+    `;
+    fs.writeFileSync(cssPath, basicCss);
+  }
+  
+  // Create basic JS if not found
+  const jsPath = path.join(assetsDir, 'index.js');
+  if (!fs.existsSync(jsPath)) {
+    console.log('Creating basic JS');
+    const basicJs = `
 // Simple client-side JavaScript
 document.addEventListener('DOMContentLoaded', () => {
   console.log('LearnHub Application loaded');
 });
-      `;
-      fs.writeFileSync(jsPath, basicJs);
-    }
+    `;
+    fs.writeFileSync(jsPath, basicJs);
   }
   
   console.log('Build completed successfully!');

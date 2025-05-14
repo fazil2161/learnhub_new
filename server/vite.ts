@@ -1,11 +1,18 @@
 import express, { type Express } from "express";
 import fs from "fs";
 import path from "path";
-import { createServer as createViteServer, createLogger } from "vite";
 import { type Server } from "http";
-import { nanoid } from "nanoid";
 
-const viteLogger = createLogger();
+// Only import Vite in development mode
+let createViteServer: any;
+let createLogger: any;
+
+// We'll use a simple logger for production
+const simpleLogger = {
+  info: (msg: string) => console.log(`[INFO] ${msg}`),
+  warn: (msg: string) => console.warn(`[WARN] ${msg}`),
+  error: (msg: string) => console.error(`[ERROR] ${msg}`),
+};
 
 export function log(message: string, source = "express") {
   const formattedTime = new Date().toLocaleTimeString("en-US", {
@@ -19,54 +26,77 @@ export function log(message: string, source = "express") {
 }
 
 export async function setupVite(app: Express, server: Server) {
-  const serverOptions = {
-    middlewareMode: true,
-    hmr: { server },
-  };
+  if (process.env.NODE_ENV !== "development") {
+    console.warn("setupVite called in non-development environment. Ignoring.");
+    return;
+  }
 
-  const viteDevConfig = {
-    configFile: false as const,
-    server: serverOptions,
-    appType: "custom" as const,
-    plugins: []
-  };
+  // Dynamically import Vite only in development
+  try {
+    const vite = await import("vite");
+    createViteServer = vite.createServer;
+    createLogger = vite.createLogger;
 
-  const vite = await createViteServer({
-    ...viteDevConfig,
-    customLogger: {
-      ...viteLogger,
-      error: (msg, options) => {
-        viteLogger.error(msg, options);
-        process.exit(1);
-      },
-    }
-  });
+    const viteLogger = createLogger();
 
-  app.use(vite.middlewares);
-  app.use("*", async (req, res, next) => {
-    const url = req.originalUrl;
+    const serverOptions = {
+      middlewareMode: true,
+      hmr: { server },
+    };
 
-    try {
-      const clientTemplate = path.resolve(
-        import.meta.dirname,
-        "..",
-        "client",
-        "index.html",
-      );
+    // Create a simple config
+    const viteDevConfig = {
+      configFile: false as const,
+      server: serverOptions,
+      appType: "custom" as const,
+      plugins: []
+    };
 
-      // always reload the index.html file from disk incase it changes
-      let template = await fs.promises.readFile(clientTemplate, "utf-8");
-      template = template.replace(
-        `src="/src/main.tsx"`,
-        `src="/src/main.tsx?v=${nanoid()}"`,
-      );
-      const page = await vite.transformIndexHtml(url, template);
-      res.status(200).set({ "Content-Type": "text/html" }).end(page);
-    } catch (e) {
-      vite.ssrFixStacktrace(e as Error);
-      next(e);
-    }
-  });
+    const viteServer = await createViteServer({
+      ...viteDevConfig,
+      customLogger: {
+        ...viteLogger,
+        error: (msg: string, options: any) => {
+          viteLogger.error(msg, options);
+          process.exit(1);
+        },
+      }
+    });
+
+    app.use(viteServer.middlewares);
+    app.use("*", async (req: express.Request, res: express.Response, next: express.NextFunction) => {
+      const url = req.originalUrl;
+
+      try {
+        const clientTemplate = path.resolve(
+          import.meta.dirname,
+          "..",
+          "client",
+          "index.html",
+        );
+
+        // always reload the index.html file from disk incase it changes
+        let template = await fs.promises.readFile(clientTemplate, "utf-8");
+        
+        // Import nanoid dynamically
+        const { nanoid } = await import("nanoid");
+        
+        template = template.replace(
+          `src="/src/main.tsx"`,
+          `src="/src/main.tsx?v=${nanoid()}"`,
+        );
+        const page = await viteServer.transformIndexHtml(url, template);
+        res.status(200).set({ "Content-Type": "text/html" }).end(page);
+      } catch (e) {
+        viteServer.ssrFixStacktrace(e as Error);
+        next(e);
+      }
+    });
+  } catch (error) {
+    console.error("Failed to initialize Vite dev server:", error);
+    // Fallback to static serving in case of error
+    serveStatic(app);
+  }
 }
 
 export function serveStatic(app: Express) {
