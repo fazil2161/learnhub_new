@@ -145,6 +145,29 @@ export function serveStatic(app: Express) {
       }
       
       log(`Serving static files from ${staticPath}`);
+      
+      // Special handling for source files - intercept requests to /src to serve compiled files if they exist
+      app.use('/src', (req, res, next) => {
+        // Check if we should transform this to an assets request
+        if (req.url.endsWith('.tsx') || req.url.endsWith('.ts') || req.url.endsWith('.jsx') || req.url.endsWith('.js')) {
+          // Redirect .tsx requests to the compiled .js in /assets
+          const assetPath = path.join(staticPath, 'assets', 'index.js');
+          if (fs.existsSync(assetPath)) {
+            console.log(`[DEBUG] Redirecting ${req.url} to compiled assets`);
+            return res.sendFile(assetPath);
+          }
+        } else if (req.url.endsWith('.css')) {
+          // Redirect .css requests to the compiled CSS in /assets
+          const cssPath = path.join(staticPath, 'assets', 'index.css');
+          if (fs.existsSync(cssPath)) {
+            console.log(`[DEBUG] Redirecting ${req.url} to compiled CSS`);
+            return res.sendFile(cssPath);
+          }
+        }
+        next();
+      });
+      
+      // Serve static files normally
       app.use(express.static(staticPath, { index: false }));
       
       // Try to find index.html
@@ -160,7 +183,33 @@ export function serveStatic(app: Express) {
           console.log(`[DEBUG] Checking for index.html at ${indexPath}`);
           if (fs.existsSync(indexPath)) {
             console.log(`[DEBUG] Found index.html at ${indexPath}`);
-            return res.sendFile(indexPath);
+            
+            // Read and modify the index.html to ensure proper asset loading
+            try {
+              let html = fs.readFileSync(indexPath, 'utf8');
+              
+              // Update references to source files to use compiled assets if needed
+              if (html.includes('src="/src/main.tsx"')) {
+                const assetsIndexJs = path.join(staticPath, 'assets', 'index.js');
+                if (fs.existsSync(assetsIndexJs)) {
+                  console.log('[DEBUG] Updating index.html to use compiled JS');
+                  html = html.replace('src="/src/main.tsx"', 'src="/assets/index.js"');
+                }
+              }
+              
+              // Add CSS link if it exists but isn't already in the HTML
+              const assetsIndexCss = path.join(staticPath, 'assets', 'index.css');
+              if (fs.existsSync(assetsIndexCss) && !html.includes('href="/assets/index.css"')) {
+                console.log('[DEBUG] Adding CSS link to index.html');
+                html = html.replace('</head>', '  <link rel="stylesheet" href="/assets/index.css">\n</head>');
+              }
+              
+              // Send the modified HTML
+              return res.type('html').send(html);
+            } catch (err) {
+              console.error('[ERROR] Failed to modify index.html:', err);
+              return res.sendFile(indexPath);
+            }
           }
         }
         

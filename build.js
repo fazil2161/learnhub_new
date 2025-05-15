@@ -7,7 +7,23 @@ import { fileURLToPath } from 'url';
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 
-console.log('Starting build process...');
+console.log('Cleaning up existing dist directory...');
+// Clean up dist directory if it exists
+const distDir = path.join(__dirname, 'dist');
+if (fs.existsSync(distDir)) {
+  try {
+    fs.rmSync(distDir, { recursive: true, force: true });
+    console.log('Successfully removed existing dist directory');
+  } catch (err) {
+    console.warn('Warning: Failed to clean up dist directory:', err);
+  }
+}
+
+// Create fresh dist directories
+console.log('Creating dist directories...');
+fs.mkdirSync(distDir, { recursive: true });
+const publicDir = path.join(distDir, 'public');
+fs.mkdirSync(publicDir, { recursive: true });
 
 // Function to recursively copy a directory
 function copyDir(src, dest) {
@@ -40,26 +56,6 @@ function copyDir(src, dest) {
   }
 }
 
-// Clean up dist directory if it exists
-const distDir = path.join(__dirname, 'dist');
-if (fs.existsSync(distDir)) {
-  console.log('Cleaning up existing dist directory...');
-  try {
-    fs.rmSync(distDir, { recursive: true, force: true });
-    console.log('Successfully removed existing dist directory');
-  } catch (err) {
-    console.warn('Warning: Failed to clean up dist directory:', err);
-  }
-}
-
-// Create fresh dist directories
-console.log('Creating dist directories...');
-fs.mkdirSync(distDir, { recursive: true });
-const publicDir = path.join(distDir, 'public');
-fs.mkdirSync(publicDir, { recursive: true });
-const assetsDir = path.join(publicDir, 'assets');
-fs.mkdirSync(assetsDir, { recursive: true });
-
 try {
   // Install dependencies
   console.log('Installing dependencies...');
@@ -69,22 +65,36 @@ try {
   console.log('Building server...');
   execSync('npx esbuild server/index.ts --platform=node --packages=external --bundle --format=esm --outdir=dist', { stdio: 'inherit' });
 
-  // Copy client files
-  console.log('Copying client files...');
-  
-  const clientDir = path.join(__dirname, 'client');
-  
-  // Copy client directory contents if it exists
-  if (fs.existsSync(clientDir)) {
-    copyDir(clientDir, publicDir);
-  } else {
-    console.warn('Warning: client directory not found. Creating basic placeholders.');
-  }
-  
-  // ALWAYS create a basic index.html
-  console.log('Creating index.html...');
-  const indexHtmlPath = path.join(publicDir, 'index.html');
-  const basicHtml = `
+  // Build client with Vite
+  console.log('Building client with Vite...');
+  try {
+    // Navigate to client directory
+    const clientDir = path.join(__dirname, 'client');
+    
+    // Build the client using Vite
+    execSync('npx vite build', { 
+      stdio: 'inherit',
+      cwd: clientDir
+    });
+    
+    console.log('Client build completed successfully');
+  } catch (err) {
+    console.error('Error building client:', err);
+    
+    // Fall back to copying client files if Vite build fails
+    console.log('Falling back to copying client files...');
+    const clientDir = path.join(__dirname, 'client');
+    
+    // Copy client directory contents if it exists
+    if (fs.existsSync(clientDir)) {
+      copyDir(clientDir, publicDir);
+    } else {
+      console.warn('Warning: client directory not found. Creating basic placeholders.');
+      
+      // ALWAYS create a basic index.html
+      console.log('Creating index.html...');
+      const indexHtmlPath = path.join(publicDir, 'index.html');
+      const basicHtml = `
 <!DOCTYPE html>
 <html lang="en">
 <head>
@@ -101,14 +111,17 @@ try {
   <script src="/assets/index.js"></script>
 </body>
 </html>
-  `;
-  fs.writeFileSync(indexHtmlPath, basicHtml);
-  console.log(`Created ${indexHtmlPath}`);
-  
-  // ALWAYS create a basic CSS
-  console.log('Creating CSS...');
-  const cssPath = path.join(assetsDir, 'index.css');
-  const basicCss = `
+      `;
+      fs.writeFileSync(indexHtmlPath, basicHtml);
+      console.log(`Created ${indexHtmlPath}`);
+      
+      // ALWAYS create a basic CSS
+      const assetsDir = path.join(publicDir, 'assets');
+      fs.mkdirSync(assetsDir, { recursive: true });
+      
+      console.log('Creating CSS...');
+      const cssPath = path.join(assetsDir, 'index.css');
+      const basicCss = `
 body {
   font-family: system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, 'Open Sans', 'Helvetica Neue', sans-serif;
   margin: 0;
@@ -129,21 +142,23 @@ body {
 h1 {
   color: #2563eb;
 }
-  `;
-  fs.writeFileSync(cssPath, basicCss);
-  console.log(`Created ${cssPath}`);
-  
-  // ALWAYS create a basic JS
-  console.log('Creating JS...');
-  const jsPath = path.join(assetsDir, 'index.js');
-  const basicJs = `
+      `;
+      fs.writeFileSync(cssPath, basicCss);
+      console.log(`Created ${cssPath}`);
+      
+      // ALWAYS create a basic JS
+      console.log('Creating JS...');
+      const jsPath = path.join(assetsDir, 'index.js');
+      const basicJs = `
 // Simple client-side JavaScript
 document.addEventListener('DOMContentLoaded', () => {
   console.log('LearnHub Application loaded');
 });
-  `;
-  fs.writeFileSync(jsPath, basicJs);
-  console.log(`Created ${jsPath}`);
+      `;
+      fs.writeFileSync(jsPath, basicJs);
+      console.log(`Created ${jsPath}`);
+    }
+  }
   
   // Create a test file to verify the build
   fs.writeFileSync(path.join(publicDir, 'build-verification.txt'), `Build completed at ${new Date().toISOString()}`);
