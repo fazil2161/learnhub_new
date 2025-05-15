@@ -2,6 +2,7 @@ import express, { type Express } from "express";
 import fs from "fs";
 import path from "path";
 import { type Server } from "http";
+import { fileURLToPath } from 'url';
 
 // Only import Vite in development mode
 let createViteServer: any;
@@ -13,6 +14,10 @@ const simpleLogger = {
   warn: (msg: string) => console.warn(`[WARN] ${msg}`),
   error: (msg: string) => console.error(`[ERROR] ${msg}`),
 };
+
+// Get the directory name in a way that works in ESM
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = path.dirname(__filename);
 
 export function log(message: string, source = "express") {
   const formattedTime = new Date().toLocaleTimeString("en-US", {
@@ -44,7 +49,7 @@ export async function setupVite(app: Express, server: Server) {
       hmr: { server },
     };
 
-    // Create a simple config
+    // Create a simple config instead of importing
     const viteDevConfig = {
       configFile: false as const,
       server: serverOptions,
@@ -69,7 +74,7 @@ export async function setupVite(app: Express, server: Server) {
 
       try {
         const clientTemplate = path.resolve(
-          import.meta.dirname,
+          __dirname,
           "..",
           "client",
           "index.html",
@@ -101,108 +106,67 @@ export async function setupVite(app: Express, server: Server) {
 
 export function serveStatic(app: Express) {
   try {
-    // First try the original path
-    const distPath = path.resolve(import.meta.dirname, "..", "dist", "public");
+    console.log(`[DEBUG] Current directory: ${process.cwd()}`);
+    console.log(`[DEBUG] Server __dirname: ${__dirname}`);
     
-    console.log(`[DEBUG] Looking for static files in ${distPath}`);
-    console.log(`[DEBUG] Directory exists: ${fs.existsSync(distPath)}`);
-    
-    if (fs.existsSync(distPath)) {
-      // Log the files in the directory to debug
-      console.log(`[DEBUG] Files in ${distPath}:`);
-      try {
-        const files = fs.readdirSync(distPath);
-        console.log(files);
-      } catch (err) {
-        console.error(`[ERROR] Failed to read directory ${distPath}:`, err);
-      }
-      
-      log(`Serving static files from ${distPath}`);
-      app.use(express.static(distPath, { index: false }));
-      
-      // fall through to index.html if the file doesn't exist
-      app.use("*", (_req, res) => {
-        const indexPath = path.resolve(distPath, "index.html");
-        console.log(`[DEBUG] Checking for index.html at ${indexPath}`);
-        console.log(`[DEBUG] File exists: ${fs.existsSync(indexPath)}`);
-        
-        if (fs.existsSync(indexPath)) {
-          res.sendFile(indexPath);
-        } else {
-          // Create a basic fallback HTML if index.html doesn't exist
-          const fallbackHtml = `<!DOCTYPE html>
-<html lang="en">
-<head>
-  <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>LearnHub App</title>
-  <style>
-    body {
-      font-family: system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, 'Open Sans', 'Helvetica Neue', sans-serif;
-      margin: 0;
-      padding: 20px;
-      background-color: #f5f5f5;
-      color: #333;
-    }
-    .container {
-      max-width: 1200px;
-      margin: 0 auto;
-      padding: 20px;
-      background-color: white;
-      border-radius: 8px;
-      box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1);
-    }
-    h1 { color: #2563eb; }
-  </style>
-</head>
-<body>
-  <div class="container">
-    <h1>LearnHub App</h1>
-    <p>Application is running but index.html was not found.</p>
-  </div>
-</body>
-</html>`;
-          res.status(200).type('html').send(fallbackHtml);
-        }
-      });
-      return;
-    }
-    
-    // Try fallback paths
-    const fallbackPaths = [
-      path.resolve(import.meta.dirname, "..", "dist"),
-      path.resolve(import.meta.dirname, ".."),
-      path.resolve(import.meta.dirname, "..", "public"),
+    // Define an array of possible paths to try in order
+    const possibleDistPaths = [
+      // Original path
+      path.resolve(__dirname, "..", "dist", "public"),
+      // Path that might work after compilation
+      path.resolve(process.cwd(), "dist", "public"),
+      // Direct paths that could work in various deployment scenarios
+      "/opt/render/project/src/dist/public",
+      path.join(process.cwd(), "public"),
+      path.resolve(__dirname, "..", "public"),
+      path.resolve(__dirname, "public"),
+      path.resolve(process.cwd(), "dist"),
+      // Try going up one directory from the current working directory
+      path.resolve(process.cwd(), "..", "dist", "public")
     ];
     
-    for (const fallbackPath of fallbackPaths) {
-      console.log(`[DEBUG] Trying fallback path: ${fallbackPath}`);
-      console.log(`[DEBUG] Directory exists: ${fs.existsSync(fallbackPath)}`);
+    console.log('[DEBUG] Trying possible static directory paths:');
+    for (const p of possibleDistPaths) {
+      console.log(`  - ${p} (exists: ${fs.existsSync(p)})`);
+    }
+    
+    // Find the first path that exists
+    const staticPath = possibleDistPaths.find(p => fs.existsSync(p));
+    
+    if (staticPath) {
+      console.log(`[DEBUG] Found static directory at: ${staticPath}`);
       
-      if (fs.existsSync(fallbackPath)) {
-        log(`Fallback: Serving static files from ${fallbackPath}`);
-        app.use(express.static(fallbackPath, { index: false }));
-        
-        // Try to find index.html in multiple places
-        const possibleIndexPaths = [
-          path.resolve(fallbackPath, "index.html"),
-          path.resolve(fallbackPath, "public", "index.html"),
-          path.resolve(fallbackPath, "dist", "public", "index.html"),
-        ];
-        
-        app.use("*", (_req, res) => {
-          // Try each possible index.html location
-          for (const indexPath of possibleIndexPaths) {
-            console.log(`[DEBUG] Checking for index.html at ${indexPath}`);
-            console.log(`[DEBUG] File exists: ${fs.existsSync(indexPath)}`);
-            
-            if (fs.existsSync(indexPath)) {
-              return res.sendFile(indexPath);
-            }
+      // Log the files in the directory to debug
+      try {
+        const files = fs.readdirSync(staticPath);
+        console.log(`[DEBUG] Files in ${staticPath}:`, files);
+      } catch (err) {
+        console.error(`[ERROR] Failed to read directory ${staticPath}:`, err);
+      }
+      
+      log(`Serving static files from ${staticPath}`);
+      app.use(express.static(staticPath, { index: false }));
+      
+      // Try to find index.html
+      const possibleIndexPaths = [
+        path.resolve(staticPath, "index.html"),
+        // If staticPath is a parent directory, check if index.html is in public subdirectory
+        path.resolve(staticPath, "public", "index.html")
+      ];
+      
+      app.use("*", (_req, res) => {
+        // Try each possible index.html location
+        for (const indexPath of possibleIndexPaths) {
+          console.log(`[DEBUG] Checking for index.html at ${indexPath}`);
+          if (fs.existsSync(indexPath)) {
+            console.log(`[DEBUG] Found index.html at ${indexPath}`);
+            return res.sendFile(indexPath);
           }
-          
-          // Ultimate fallback - generate simple HTML
-          const fallbackHtml = `<!DOCTYPE html>
+        }
+        
+        // Ultimate fallback - generate simple HTML
+        console.log(`[DEBUG] No index.html found, serving generated HTML`);
+        const fallbackHtml = `<!DOCTYPE html>
 <html lang="en">
 <head>
   <meta charset="UTF-8">
@@ -235,11 +199,10 @@ export function serveStatic(app: Express) {
   </div>
 </body>
 </html>`;
-          res.status(200).type('html').send(fallbackHtml);
-        });
-        
-        return;
-      }
+        res.status(200).type('html').send(fallbackHtml);
+      });
+      
+      return;
     }
     
     // If we reach here, no suitable directory was found
@@ -288,6 +251,10 @@ export function serveStatic(app: Express) {
     
     // Provide a more detailed error response
     app.use("*", (_req, res) => {
+      const errorDetails = error instanceof Error 
+        ? `${error.name}: ${error.message}\n${error.stack || ''}`
+        : JSON.stringify(error, null, 2);
+      
       const errorHtml = `<!DOCTYPE html>
 <html lang="en">
 <head>
@@ -324,7 +291,7 @@ export function serveStatic(app: Express) {
     <h1>Server Error</h1>
     <p>There was an error setting up static file serving.</p>
     <p>Error details:</p>
-    <pre>${error instanceof Error ? `${error.name}: ${error.message}\n${error.stack || ''}` : JSON.stringify(error, null, 2)}</pre>
+    <pre>${errorDetails}</pre>
     <p>API endpoints should still be functional.</p>
   </div>
 </body>
