@@ -167,8 +167,30 @@ export function serveStatic(app: Express) {
         next();
       });
       
-      // Serve static files normally
-      app.use(express.static(staticPath, { index: false }));
+      // Also handle /assets requests
+      app.use('/assets', (req, res, next) => {
+        const requestedAsset = path.join(staticPath, 'assets', req.path);
+        const assetPath = path.join(staticPath, 'assets', path.basename(req.path));
+        
+        console.log(`[DEBUG] Asset request for ${req.path}, trying ${assetPath}`);
+        
+        if (fs.existsSync(assetPath)) {
+          return res.sendFile(assetPath);
+        }
+        next();
+      });
+      
+      // Serve static files with proper content types
+      app.use(express.static(staticPath, { 
+        index: false,
+        setHeaders: (res, filePath) => {
+          if (filePath.endsWith('.js')) {
+            res.setHeader('Content-Type', 'application/javascript');
+          } else if (filePath.endsWith('.css')) {
+            res.setHeader('Content-Type', 'text/css');
+          }
+        }
+      }));
       
       // Try to find index.html
       const possibleIndexPaths = [
@@ -177,12 +199,24 @@ export function serveStatic(app: Express) {
         path.resolve(staticPath, "public", "index.html")
       ];
       
+      // Also check for our fallback HTML
+      const fallbackHtmlPath = path.resolve(staticPath, "fallback.html");
+      if (fs.existsSync(fallbackHtmlPath)) {
+        possibleIndexPaths.push(fallbackHtmlPath);
+      }
+      
       app.use("*", (_req, res) => {
         // Try each possible index.html location
         for (const indexPath of possibleIndexPaths) {
           console.log(`[DEBUG] Checking for index.html at ${indexPath}`);
           if (fs.existsSync(indexPath)) {
             console.log(`[DEBUG] Found index.html at ${indexPath}`);
+            
+            // Special case for fallback.html
+            if (indexPath === fallbackHtmlPath) {
+              console.log('[DEBUG] Using fallback.html');
+              return res.sendFile(fallbackHtmlPath);
+            }
             
             // Read and modify the index.html to ensure proper asset loading
             try {
@@ -193,24 +227,37 @@ export function serveStatic(app: Express) {
                 const assetsIndexJs = path.join(staticPath, 'assets', 'index.js');
                 if (fs.existsSync(assetsIndexJs)) {
                   console.log('[DEBUG] Updating index.html to use compiled JS');
-                  html = html.replace('src="/src/main.tsx"', 'src="/assets/index.js"');
+                  html = html.replace('src="/src/main.tsx"', 'src="./assets/index.js"');
                 }
               }
               
               // Add CSS link if it exists but isn't already in the HTML
               const assetsIndexCss = path.join(staticPath, 'assets', 'index.css');
-              if (fs.existsSync(assetsIndexCss) && !html.includes('href="/assets/index.css"')) {
+              if (fs.existsSync(assetsIndexCss) && !html.includes('href="/assets/index.css"') && !html.includes('href="./assets/index.css"')) {
                 console.log('[DEBUG] Adding CSS link to index.html');
-                html = html.replace('</head>', '  <link rel="stylesheet" href="/assets/index.css">\n</head>');
+                html = html.replace('</head>', '  <link rel="stylesheet" href="./assets/index.css">\n</head>');
               }
               
               // Send the modified HTML
               return res.type('html').send(html);
             } catch (err) {
               console.error('[ERROR] Failed to modify index.html:', err);
+              
+              // If the fallback HTML exists, use it
+              if (fs.existsSync(fallbackHtmlPath)) {
+                console.log('[DEBUG] Using fallback.html due to error');
+                return res.sendFile(fallbackHtmlPath);
+              }
+              
               return res.sendFile(indexPath);
             }
           }
+        }
+        
+        // If we have a fallback HTML, use it
+        if (fs.existsSync(fallbackHtmlPath)) {
+          console.log('[DEBUG] Using fallback.html as last resort');
+          return res.sendFile(fallbackHtmlPath);
         }
         
         // Ultimate fallback - generate simple HTML

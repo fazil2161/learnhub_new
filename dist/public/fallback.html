@@ -1,0 +1,275 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>LearnHub - Online Course Platform</title>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
+  <style>
+    :root {
+      --primary: #3b82f6;
+      --primary-hover: #2563eb;
+      --secondary: #64748b;
+      --secondary-hover: #475569;
+      --background: #f8fafc;
+      --card-background: #ffffff;
+      --header-background: #ffffff;
+      --text-primary: #0f172a;
+      --text-secondary: #64748b;
+      --border: #e2e8f0;
+      --shadow: 0 1px 3px 0 rgba(0, 0, 0, 0.1), 0 1px 2px 0 rgba(0, 0, 0, 0.06);
+      --radius: 0.5rem;
+      --transition: 0.15s ease;
+    }
+    
+    * {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+    }
+    
+    body {
+      font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, 'Open Sans', 'Helvetica Neue', sans-serif;
+      background-color: var(--background);
+      color: var(--text-primary);
+      line-height: 1.5;
+    }
+    
+    a {
+      color: var(--primary);
+      text-decoration: none;
+      transition: var(--transition);
+    }
+    
+    a:hover {
+      color: var(--primary-hover);
+    }
+    
+    button {
+      cursor: pointer;
+      font-family: inherit;
+    }
+    
+    h1, h2, h3 {
+      margin-bottom: 1rem;
+      font-weight: 600;
+    }
+    
+    .container {
+      width: 100%;
+      max-width: 1200px;
+      margin: 0 auto;
+      padding: 0 1rem;
+    }
+    
+    .navbar {
+      background-color: var(--header-background);
+      box-shadow: var(--shadow);
+      height: 4rem;
+      position: sticky;
+      top: 0;
+      z-index: 100;
+    }
+    
+    .navbar-container {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      height: 100%;
+    }
+    
+    .navbar-logo {
+      font-size: 1.5rem;
+      font-weight: 700;
+      color: var(--primary);
+    }
+    
+    .navbar-links {
+      display: flex;
+      align-items: center;
+      gap: 1.5rem;
+    }
+    
+    .btn {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      border-radius: var(--radius);
+      font-size: 0.875rem;
+      font-weight: 500;
+      height: 2.5rem;
+      padding: 0 1rem;
+      transition: var(--transition);
+      border: none;
+    }
+    
+    .btn-primary {
+      background-color: var(--primary);
+      color: white;
+    }
+    
+    .btn-primary:hover {
+      background-color: var(--primary-hover);
+    }
+    
+    .page-container {
+      min-height: calc(100vh - 4rem);
+      padding: 2rem 0;
+    }
+    
+    .text-center {
+      text-align: center;
+    }
+    
+    .grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
+      gap: 2rem;
+      margin-top: 2rem;
+    }
+    
+    .card {
+      background-color: var(--card-background);
+      border-radius: var(--radius);
+      box-shadow: var(--shadow);
+      overflow: hidden;
+    }
+    
+    .card-img {
+      width: 100%;
+      height: 200px;
+      object-fit: cover;
+    }
+    
+    .card-body {
+      padding: 1.5rem;
+    }
+    
+    .card-title {
+      font-size: 1.25rem;
+      margin-bottom: 0.5rem;
+    }
+    
+    .card-text {
+      color: var(--text-secondary);
+      margin-bottom: 1rem;
+    }
+    
+    .card-footer {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      padding-top: 1rem;
+      border-top: 1px solid var(--border);
+    }
+    
+    .card-price {
+      font-weight: 600;
+      color: var(--primary);
+    }
+    
+    .mb-2 { margin-bottom: 0.5rem; }
+    .mb-4 { margin-bottom: 1rem; }
+    .mb-6 { margin-bottom: 1.5rem; }
+    .mb-8 { margin-bottom: 2rem; }
+    .mb-10 { margin-bottom: 2.5rem; }
+    
+    .footer {
+      background-color: var(--header-background);
+      border-top: 1px solid var(--border);
+      padding: 2rem 0;
+      margin-top: 4rem;
+    }
+    
+    .footer-links {
+      display: flex;
+      justify-content: center;
+      gap: 2rem;
+      margin-bottom: 1rem;
+    }
+    
+    .footer-copyright {
+      text-align: center;
+      color: var(--text-secondary);
+      font-size: 0.875rem;
+    }
+  </style>
+</head>
+<body>
+  <header class="navbar">
+    <div class="navbar-container container">
+      <a href="/" class="navbar-logo">LearnHub</a>
+      <nav class="navbar-links">
+        <a href="/">Home</a>
+        <a href="/courses">Courses</a>
+        <a href="/login" class="btn btn-primary">Login</a>
+      </nav>
+    </div>
+  </header>
+  
+  <main class="page-container container">
+    <section class="mb-10">
+      <h1 class="text-center mb-4">Welcome to LearnHub</h1>
+      <p class="text-center mb-8">Expand your skills with our online courses. Learn from industry experts and boost your career.</p>
+      
+      <h2 class="text-center mb-6">Featured Courses</h2>
+      <div class="grid">
+        <div class="card">
+          <img src="https://images.unsplash.com/photo-1517694712202-14dd9538aa97" alt="Web Development" class="card-img">
+          <div class="card-body">
+            <h3 class="card-title">Introduction to Web Development</h3>
+            <p class="card-text">Learn the fundamentals of HTML, CSS, and JavaScript to build modern websites.</p>
+            <div class="card-footer">
+              <span class="card-price">$49.99</span>
+              <button class="btn btn-primary">Enroll Now</button>
+            </div>
+          </div>
+        </div>
+        
+        <div class="card">
+          <img src="https://images.unsplash.com/photo-1518773553398-650c184e0bb3" alt="Data Science" class="card-img">
+          <div class="card-body">
+            <h3 class="card-title">Data Science Fundamentals</h3>
+            <p class="card-text">Master the skills needed to analyze complex data and make data-driven decisions.</p>
+            <div class="card-footer">
+              <span class="card-price">$59.99</span>
+              <button class="btn btn-primary">Enroll Now</button>
+            </div>
+          </div>
+        </div>
+        
+        <div class="card">
+          <img src="https://images.unsplash.com/photo-1526374965328-7f61d4dc18c5" alt="Machine Learning" class="card-img">
+          <div class="card-body">
+            <h3 class="card-title">Machine Learning Basics</h3>
+            <p class="card-text">Understand core machine learning concepts and implement your first models.</p>
+            <div class="card-footer">
+              <span class="card-price">$69.99</span>
+              <button class="btn btn-primary">Enroll Now</button>
+            </div>
+          </div>
+        </div>
+      </div>
+    </section>
+    
+    <section class="text-center mb-10">
+      <h2 class="mb-4">Ready to start learning?</h2>
+      <p class="mb-6">Join thousands of students already learning on LearnHub.</p>
+      <button class="btn btn-primary">Get Started</button>
+    </section>
+  </main>
+  
+  <footer class="footer">
+    <div class="container">
+      <div class="footer-links">
+        <a href="#">About Us</a>
+        <a href="#">Courses</a>
+        <a href="#">Privacy Policy</a>
+        <a href="#">Terms of Service</a>
+        <a href="#">Contact</a>
+      </div>
+      <p class="footer-copyright">© 2024 LearnHub. All rights reserved.</p>
+    </div>
+  </footer>
+</body>
+</html> 

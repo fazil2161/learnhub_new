@@ -6,10 +6,90 @@
     <title>LearnHub - Online Course Platform</title>
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
     <meta name="description" content="Expand your skills with online courses. Learn from industry experts and boost your career with our extensive library of courses.">
-    <link rel="stylesheet" href="/assets/index.css">
+    <link rel="stylesheet" href="./assets/index.css">
+    <!-- Fallback CSS in case the external file doesn't load -->
+    <style>
+      :root {
+        --primary: #3b82f6;
+        --primary-hover: #2563eb;
+        --secondary: #64748b;
+        --background: #f8fafc;
+        --card-background: #ffffff;
+        --header-background: #ffffff;
+        --text-primary: #0f172a;
+        --border: #e2e8f0;
+      }
+      
+      * {
+        box-sizing: border-box;
+        margin: 0;
+        padding: 0;
+      }
+      
+      body {
+        font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+        background-color: var(--background);
+        color: var(--text-primary);
+        line-height: 1.5;
+      }
+      
+      .container {
+        width: 100%;
+        max-width: 1200px;
+        margin: 0 auto;
+        padding: 0 1rem;
+      }
+      
+      .navbar {
+        background-color: var(--header-background);
+        box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+        height: 4rem;
+        position: sticky;
+        top: 0;
+        z-index: 100;
+      }
+      
+      .navbar-container {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        height: 100%;
+      }
+      
+      .btn-primary {
+        background-color: var(--primary);
+        color: white;
+        border-radius: 0.5rem;
+        padding: 0.5rem 1rem;
+        cursor: pointer;
+        font-weight: 500;
+      }
+      
+      .card {
+        background-color: var(--card-background);
+        border-radius: 0.5rem;
+        box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+        overflow: hidden;
+      }
+      
+      .grid {
+        display: grid;
+        grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
+        gap: 2rem;
+      }
+      
+      .text-center {
+        text-align: center;
+      }
+      
+      .mb-4 { margin-bottom: 1rem; }
+      .mb-6 { margin-bottom: 1.5rem; }
+      .mb-8 { margin-bottom: 2rem; }
+      .mb-10 { margin-bottom: 2.5rem; }
+    </style>
   </head>
   <body>
     <div id="root"></div>
-    <script src="/assets/index.js"></script>
+    <script src="./assets/index.js"></script>
   </body>
 </html>

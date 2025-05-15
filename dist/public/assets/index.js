@@ -20,6 +20,33 @@ const loadCSS = (href) => {
   });
 };
 
+// Make sure our CSS is loaded regardless of path issues
+document.addEventListener('DOMContentLoaded', () => {
+  // Check if our stylesheet is already loaded
+  const isStyleLoaded = Array.from(document.styleSheets).some(sheet => 
+    sheet.href && (sheet.href.includes('/assets/index.css') || sheet.href.includes('./assets/index.css'))
+  );
+  
+  if (!isStyleLoaded) {
+    console.log('Style not loaded, trying alternate paths');
+    // Try alternate paths for the stylesheet
+    const stylePaths = [
+      './assets/index.css',
+      '/assets/index.css',
+      'assets/index.css',
+      '../assets/index.css',
+      'index.css'
+    ];
+    
+    for (const path of stylePaths) {
+      const link = document.createElement('link');
+      link.rel = 'stylesheet';
+      link.href = path;
+      document.head.appendChild(link);
+    }
+  }
+});
+
 // Dependencies to load
 const dependencies = [
   loadScript('https://unpkg.com/react@18/umd/react.production.min.js'),
@@ -38,6 +65,8 @@ Promise.all(dependencies)
   })
   .catch(error => {
     console.error('Failed to load dependencies:', error);
+    // Still try to initialize the app even if dependencies fail
+    initializeApp();
   });
 
 function initializeApp() {
